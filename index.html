@@ -122,6 +122,11 @@ function loadBuilder(saved){
     <button onclick="addSection()">+ Add Section</button>
     <button onclick="preview()">Preview</button>
     <button onclick="generate()">Generate Link</button>
+    <button onclick="saveExercise()">💾 Save Exercise</button>
+
+<input type="file" id="loadExerciseFile" style="display:none" onchange="loadExerciseFile(event)">
+
+<button onclick="document.getElementById('loadExerciseFile').click()">📂 Load Exercise</button>
 
     <p id="link"></p>
   `;
@@ -251,7 +256,37 @@ function generate(){
   document.getElementById("link").innerHTML=
     `<b>Lesson Link:</b><br><a href="${link}" target="_blank">${link}</a>`;
 }
+function saveExercise(){
+  const data = collect();
 
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "exercise.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+  function loadExerciseFile(event){
+  const file = event.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      loadBuilder(data); // ✅ uses your existing system safely
+    }catch{
+      alert("Invalid exercise file");
+    }
+  };
+
+  reader.readAsText(file);
+}
 /* ---------- STUDENT + PREVIEW ---------- */
 function loadStudent(data,previewMode){
   lessonCache=data;
