@@ -12,11 +12,7 @@ body{font-family:system-ui;background:#f8fafc;margin:0;}
 .section-builder{background:#f1f5f9;padding:12px;margin:12px 0;border-radius:10px;}
 .section-active{outline:2px solid #4f46e5;}
 
-.field-instruction{
-  font-size:13px;
-  color:#555;
-  margin-top:10px;
-}
+.field-instruction{font-size:13px;color:#555;margin-top:10px;}
 
 textarea,input{width:100%;padding:6px;margin-top:4px;}
 
@@ -25,7 +21,6 @@ button{
   background:#4f46e5;color:white;cursor:pointer;
 }
 
-/* ✅ VIDEO FIX */
 video, iframe, #player, #builderPlayer{
   width:100%;
   height:400px;
@@ -33,35 +28,17 @@ video, iframe, #player, #builderPlayer{
   display:block;
 }
 
-/* ✅ TEXT LAYER */
-#text{
-  font-size:18px;
-  line-height:2;
-  margin-top:20px;
-}
+#text{font-size:18px;line-height:2;margin-top:20px;}
 
-/* ✅ FINAL GAP FIX */
-.gap-wrap{
-  display:inline-block;
-  vertical-align:middle;
-  margin:0 6px;
-}
+.gap-wrap{display:inline-block;vertical-align:middle;margin:0 6px;}
 
 .gap-input{
-  width:140px;
-  height:28px;
-  border:none;
+  width:140px;height:28px;border:none;
   border-bottom:2px solid #4f46e5;
-  font-size:16px;
-  text-align:center;
-  outline:none;
-  background:white;
+  font-size:16px;text-align:center;outline:none;background:white;
 }
 
-.gap-input:focus{
-  border-bottom:2px solid #10b981;
-}
-
+.gap-input:focus{border-bottom:2px solid #10b981;}
 .correct{border-bottom:2px solid green;}
 .incorrect{border-bottom:2px solid red;}
 </style>
@@ -116,6 +93,11 @@ function loadBuilder(saved){
     <button onclick="addSection()">+ Add Section</button>
     <button onclick="preview()">Preview</button>
     <button onclick="generate()">Generate Link</button>
+
+    <!-- ✅ NEW (minimal UI addition) -->
+    <button onclick="saveLesson()">💾 Save Lesson</button>
+    <input type="file" id="loadFile" style="display:none" onchange="loadLessonFile(event)">
+    <button onclick="document.getElementById('loadFile').click()">📂 Load Lesson</button>
 
     <p id="link"></p>
   `;
@@ -196,145 +178,32 @@ function generate(){
     `<b>Lesson Link:</b><br><a href="${link}" target="_blank">${link}</a>`;
 }
 
-/* ---------- STUDENT ---------- */
-function loadStudent(data,preview){
-  lessonCache=data;
-  answersMap={}; checked=false;
-
-  app.innerHTML=`
-    ${preview?'<button onclick="loadBuilder(lessonCache)">⬅ Back</button>':""}
-    <h2>🎧 Listening Lesson</h2>
-
-    ${data.videoUrl.includes("youtube")?'<div id="player"></div>':`<video id="video" controls><source src="${data.videoUrl}"></video>`}
-
-    <div id="buttons"></div>
-    <div id="text"></div>
-
-    <button onclick="checkAnswers()">Check Answers</button>
-    <button id="revealBtn" disabled onclick="reveal()">Reveal Answers</button>
-    <button onclick="repeat()">Repeat Section</button>
-
-    <p id="result"></p>
-  `;
-
-  if(data.videoUrl.includes("youtube")){
-    loadYT(()=>ytPlayer=new YT.Player("player",{videoId:getYTid(data.videoUrl)}));
-  }
-
-  renderButtons(data);
-  renderText(data);
+/* ---------- ✅ NEW SAVE / LOAD ---------- */
+function saveLesson(){
+  const data = collect();
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="lesson.json";
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-function renderButtons(data){
-  const box=document.getElementById("buttons");
-  data.sections.forEach((_,i)=>{
-    const b=document.createElement("button");
-    b.textContent="Section "+(i+1);
-    b.onclick=()=>play(i,data);
-    box.appendChild(b);
-  });
-}
+function loadLessonFile(e){
+  const file=e.target.files[0];
+  if(!file) return;
 
-function play(i,data){
-  currentSection=i;
-  document.querySelectorAll("#text > div").forEach((d,idx)=>d.classList.toggle("section-active",idx===i));
-
-  const sec=data.sections[i];
-
-  if(ytPlayer){
-    ytPlayer.seekTo(sec.start,true);
-    ytPlayer.playVideo();
-    clearInterval(stopTimer);
-    stopTimer=setInterval(()=>{
-      if(ytPlayer.getCurrentTime()>=sec.end){ytPlayer.pauseVideo();clearInterval(stopTimer);}
-    },200);
-  }else{
-    const v=document.getElementById("video");
-    v.currentTime=sec.start;
-    v.play();
-    clearInterval(stopTimer);
-    stopTimer=setInterval(()=>{
-      if(v.currentTime>=sec.end){v.pause();clearInterval(stopTimer);}
-    },200);
-  }
-}
-
-function repeat(){ play(currentSection, lessonCache); }
-
-/* ---------- FINAL INPUT FIX (UPDATED) ---------- */
-function renderText(data){
-  const container=document.getElementById("text");
-  container.innerHTML="";
-
-  data.sections.forEach((sec,si)=>{
-    const div=document.createElement("div");
-    const parts=sec.text.split("___");
-
-    parts.forEach((p,i)=>{
-      div.appendChild(document.createTextNode(p));
-
-      if(i<parts.length-1){
-        const wrap=document.createElement("span");
-        wrap.className="gap-wrap";
-
-        const input=document.createElement("input");
-        input.type="text";
-        input.className="gap-input";
-
-        /* ✅ FIX: force input usability */
-        input.disabled = false;
-        input.readOnly = false;
-        input.style.pointerEvents = "auto";
-
-        const id=`q${si}_${i}`;
-        input.id=id;
-        answersMap[id]=sec.answers[i]||"";
-
-        wrap.appendChild(input);
-        div.appendChild(wrap);
-      }
-    });
-
-    container.appendChild(div);
-  });
-
-  /* ✅ FIX: re-enable after render (preview mode fix) */
-  setTimeout(()=>{
-    document.querySelectorAll(".gap-input").forEach(i=>{
-      i.disabled = false;
-      i.readOnly = false;
-      i.style.pointerEvents = "auto";
-    });
-  },0);
-}
-
-/* ---------- CHECK ---------- */
-function checkAnswers(){
-  let score=0, attempted=false;
-
-  Object.keys(answersMap).forEach(id=>{
-    const el=document.getElementById(id);
-    if(el.value.trim()!=="") attempted=true;
-
-    const correct=answersMap[id].toLowerCase();
-    const user=el.value.toLowerCase();
-
-    if(user===correct){
-      el.classList.add("correct");
-      score++;
-    }else{
-      el.classList.add("incorrect");
+  const reader=new FileReader();
+  reader.onload=function(evt){
+    try{
+      const data=JSON.parse(evt.target.result);
+      loadBuilder(data);
+    }catch{
+      alert("Invalid lesson file");
     }
-  });
-
-  document.getElementById("result").innerText=`Score: ${score}/${Object.keys(answersMap).length}`;
-  if(attempted) document.getElementById("revealBtn").disabled=false;
-}
-
-function reveal(){
-  Object.keys(answersMap).forEach(id=>{
-    document.getElementById(id).value=answersMap[id];
-  });
+  };
+  reader.readAsText(file);
 }
 </script>
 </body>
