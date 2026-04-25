@@ -265,7 +265,14 @@ function saveExercise(){
 
   const a = document.createElement("a");
   a.href = url;
-  a.download = "exercise.json";
+  let name = prompt("Enter a name for this exercise:", "exercise");
+
+if(!name) name = "exercise";
+
+// remove .json if they typed it
+name = name.replace(/\.json$/i, "");
+
+a.download = name + ".json";
   a.click();
 
   URL.revokeObjectURL(url);
